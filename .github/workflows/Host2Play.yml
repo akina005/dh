@@ -1,0 +1,96 @@
+name: Host2Play Auto Renew Logic
+
+on:
+  schedule:
+    - cron: '43 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  host2play-renewal:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+          libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libasound2t64 \
+          libpango-1.0-0 libcairo2 libgl1 libglib2.0-0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Python Requirements
+        run: |
+          pip install --upgrade pip
+          pip install seleniumbase requests loguru
+          pip install pyrogram tgcrypto
+
+      - name: Run Host2Play Task
+        id: host2play_run
+        continue-on-error: true
+        env:
+          # --- 保留：发报告用的 Bot 信息和 AI 识图信息 ---
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          MY_CHAT_ID: ${{ secrets.MY_CHAT_ID }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_BASE_URL: ${{ secrets.AI_BASE_URL }}
+          AI_MODEL_NAME: ${{ secrets.AI_MODEL_NAME }}
+          HOSTUUID: ${{ secrets.HOSTUUID }}
+          MY_GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PYTHONPATH: ${{ github.workspace }}
+          
+        run: python host2play.py  
+
+      # --- 【精准新增】：如果脚本产生了新的 SSI 或日志，物理推送到对方仓库 ---
+      - name: Push Generated SSI and Logs
+        if: always()
+        run: |
+          git config --global user.name "SecurityBot"
+          git config --global user.email "bot@github.com"
+          git add play/
+          git commit -m "chore: sync host2play runtime data [skip ci]" || echo "No changes"
+          git push origin ${{ github.ref_name }} || echo "Push failed"
+
+      - name: Change IP and Restart Workflow
+        if: steps.host2play_run.outcome == 'failure' && github.run_attempt < 6
+        run: |
+          echo "检测到任务失败，准备换 IP 重试（当前第 ${{ github.run_attempt }} 次）"
+          
+          WORKFLOW_NAME="Host2Play Auto Renew Logic"
+          
+          WORKFLOW_ID=$(curl -s -H "Authorization: token ${{ secrets.MY_GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows" \
+            | jq -r ".workflows[] | select(.name==\"$WORKFLOW_NAME\") | .id")
+
+          echo "目标工作流 ID: $WORKFLOW_ID"
+
+          curl -L -i -X POST \
+            -H "Authorization: token ${{ secrets.MY_GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/$WORKFLOW_ID/dispatches" \
+            -d '{"ref":"${{ github.ref_name }}"}'
+          
+          exit 1
+
+  cleanup_runs:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Delete old workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 0
+          keep_minimum_runs: 15
