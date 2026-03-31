@@ -49,11 +49,12 @@ jobs:
           AI_MODEL_NAME: ${{ secrets.AI_MODEL_NAME }}
           HOSTUUID: ${{ secrets.HOSTUUID }}
           MY_GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
-          # --- 【核心修改】：直接写死私库路径，欺骗脚本内部的推送逻辑 ---
-          GITHUB_REPOSITORY: 'akina005/hax-host2play'
           PYTHONPATH: ${{ github.workspace }}
           
-        run: python host2play.py  
+        run: |
+          # 在 Shell 层面强制覆盖 GitHub 的默认系统变量，骗过 Python 脚本
+          export GITHUB_REPOSITORY="akina005/hax-host2play"
+          python host2play.py
 
       # --- 2. 失败重试逻辑（重启当前所在仓库的工作流） ---
       - name: Change IP and Restart Workflow
