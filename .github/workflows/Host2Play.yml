@@ -12,8 +12,13 @@ jobs:
       contents: write
       
     steps:
+      # --- 修改为拉取你的私有仓库 ---
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          repository: akina005/hax-host2play
+          token: ${{ secrets.MY_GITHUB_TOKEN }}
+          path: .
 
       - name: Install System Dependencies
         run: |
