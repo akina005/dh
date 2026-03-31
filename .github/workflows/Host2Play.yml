@@ -49,22 +49,13 @@ jobs:
           AI_MODEL_NAME: ${{ secrets.AI_MODEL_NAME }}
           HOSTUUID: ${{ secrets.HOSTUUID }}
           MY_GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+          # --- 【核心修改】：直接写死私库路径，欺骗脚本内部的推送逻辑 ---
+          GITHUB_REPOSITORY: 'akina005/hax-host2play'
           PYTHONPATH: ${{ github.workspace }}
           
         run: python host2play.py  
 
-      # --- 2. 精准推送 play/ 目录下的日志和 SSI 回私有仓库的 main 分支 ---
-      - name: Push Generated SSI and Logs
-        if: always()
-        run: |
-          git config --global user.name "SecurityBot"
-          git config --global user.email "bot@github.com"
-          git add play/
-          git commit -m "chore: sync host2play runtime data [skip ci]" || echo "No changes"
-          git push origin main || echo "Push failed"
-
-      # --- 3. 失败重试逻辑（重启当前所在仓库的工作流） ---
+      # --- 2. 失败重试逻辑（重启当前所在仓库的工作流） ---
       - name: Change IP and Restart Workflow
         if: steps.host2play_run.outcome == 'failure' && github.run_attempt < 6
         run: |
