@@ -1,5 +1,0 @@
-seleniumbase
-pyrogram
-tgcrypto
-requests
-loguru
