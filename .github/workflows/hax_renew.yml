@@ -21,15 +21,17 @@ jobs:
             exit 0
           fi
 
-          # 计算当前 UTC Unix 天数，并固定为每 3 天执行一次
+          # 以 2026-04-28 为基准日，固定每 3 天执行一次
+          BASE_DATE="2026-04-28"
           DAYS=$(( $(date -u +%s) / 86400 ))
-          REMAINDER=$(( DAYS % 3 ))
+          BASE_DAYS=$(( $(date -u -d "$BASE_DATE" +%s) / 86400 ))
+          REMAINDER=$(( (DAYS - BASE_DAYS) % 3 ))
 
           if [ $REMAINDER -eq 0 ]; then
             echo "Today is the scheduled day. Starting workflow..."
             echo "run=true" >> $GITHUB_OUTPUT
           else
-            echo "Not today. Skipping (Current remainder: $REMAINDER, Target: 0)."
+            echo "Not today. Skipping (Current remainder: $REMAINDER, Base date: $BASE_DATE, Target: 0)."
             echo "run=false" >> $GITHUB_OUTPUT
           fi
 
