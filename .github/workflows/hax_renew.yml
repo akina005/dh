@@ -2,7 +2,7 @@ name: Hax Auto Renew Logic
 
 on:
   schedule:
-    - cron: '20 18 */3 * *'
+    - cron: '20 18 * * *'
   workflow_dispatch:
 
 jobs:
@@ -12,8 +12,30 @@ jobs:
       contents: write
       
     steps:
+      - name: Interval Check (Strict 3-day cycle)
+        id: check
+        run: |
+          # 手动触发时跳过周期检查，直接运行
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # 计算当前 UTC Unix 天数，并固定为每 3 天执行一次
+          DAYS=$(( $(date -u +%s) / 86400 ))
+          REMAINDER=$(( DAYS % 3 ))
+
+          if [ $REMAINDER -eq 0 ]; then
+            echo "Today is the scheduled day. Starting workflow..."
+            echo "run=true" >> $GITHUB_OUTPUT
+          else
+            echo "Not today. Skipping (Current remainder: $REMAINDER, Target: 0)."
+            echo "run=false" >> $GITHUB_OUTPUT
+          fi
+
       # --- 1. 改为私库拉取 ---
       - name: Checkout Repository
+        if: steps.check.outputs.run == 'true'
         uses: actions/checkout@v4
         with:
           repository: akina005/hax-host2play
@@ -21,6 +43,7 @@ jobs:
           path: .
 
       - name: Install System Dependencies
+        if: steps.check.outputs.run == 'true'
         run: |
           sudo apt-get update
           # 注意：末尾补回了 jq，换IP逻辑解析 JSON 必须用到它
@@ -29,17 +52,20 @@ jobs:
           libpango-1.0-0 libcairo2 libgl1 libglib2.0-0 jq
 
       - name: Set up Python
+        if: steps.check.outputs.run == 'true'
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
       - name: Install Python Requirements
+        if: steps.check.outputs.run == 'true'
         run: |
           pip install --upgrade pip
           pip install seleniumbase pyrogram tgcrypto requests loguru
 
       - name: Run Hax Task
         id: hax_run
+        if: steps.check.outputs.run == 'true'
         continue-on-error: true  # 必须开启，允许报错后执行下一步换IP逻辑
         env:
           TG_STRING_SESSION: ${{ secrets.TG_STRING_SESSION }}
@@ -59,7 +85,7 @@ jobs:
         run: python hax_renw.py  
 
       - name: Change IP and Restart Workflow
-        if: steps.hax_run.outcome == 'failure' && github.run_attempt < 6
+        if: steps.check.outputs.run == 'true' && steps.hax_run.outcome == 'failure' && github.run_attempt < 6
         run: |
           echo "检测到任务失败，准备换 IP 重试（当前第 ${{ github.run_attempt }} 次）"
           
