@@ -2,7 +2,7 @@ name: Hax Auto Renew Logic
 
 on:
   schedule:
-    - cron: '20 20 * * *'
+    - cron: '20 14 * * *'
   workflow_dispatch:
 
 jobs:
@@ -22,7 +22,7 @@ jobs:
           fi
 
           # 以 2026-04-28 为基准日，固定每 3 天执行一次
-          BASE_DATE="2026-04-28"
+          BASE_DATE="2026-04-29"
           DAYS=$(( $(date -u +%s) / 86400 ))
           BASE_DAYS=$(( $(date -u -d "$BASE_DATE" +%s) / 86400 ))
           REMAINDER=$(( (DAYS - BASE_DAYS) % 3 ))
