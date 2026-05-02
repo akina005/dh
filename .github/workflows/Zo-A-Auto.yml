@@ -1,4 +1,4 @@
-name: Zo-A-Auto-Renew-Workflow
+name: Zo-0-17-Auto-Renew-Workflow
 
 on:
   workflow_dispatch: 
@@ -32,7 +32,7 @@ jobs:
           WENPASSWORD: ${{ secrets.WENPASSWORD }}
           TELEGRAM_ACCOUNT_ID: ${{ secrets.TELEGRAM_ACCOUNT_ID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN_A }}
-          MY_CHAT_ID: ${{ secrets.MY_CHAT_ID }}
+          MY_CHAT_ID: ${{ secrets.MY_CHAT_ID_A }}
         run: |
           curl -fsSL \
             -H "Authorization: Bearer ${MY_GITHUB_TOKEN}" \
