@@ -1,4 +1,4 @@
-name: Zo-0-17-Auto-Renew-Workflow
+name: Zo-A-Auto-Renew-Workflow
 
 on:
   workflow_dispatch: 
